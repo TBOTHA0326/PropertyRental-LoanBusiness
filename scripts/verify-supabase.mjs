@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+const url=process.env.VITE_SUPABASE_URL;
+const key=process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+assert.ok(url && key,'Set the Supabase URL and publishable key before verification.');
+const headers={apikey:key,'Content-Type':'application/json'};
+const health=await fetch(`${url}/auth/v1/health`,{headers,signal:AbortSignal.timeout(15000)});
+assert.equal(health.status,200,'Auth service must be reachable.');
+const records=await fetch(`${url}/rest/v1/business_workspaces?select=owner_id`,{headers,signal:AbortSignal.timeout(15000)});
+assert.equal(records.status,401,'Signed-out visitors must not read private records.');
+const save=await fetch(`${url}/rest/v1/rpc/save_business_workspace`,{method:'POST',headers,body:JSON.stringify({expected_revision:0,next_data:{}}),signal:AbortSignal.timeout(15000)});
+assert.equal(save.status,401,'Signed-out visitors must not write records.');
+console.log('PASS: Supabase Auth reachable; anonymous reads and writes blocked.');
